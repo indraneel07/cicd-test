@@ -142,13 +142,13 @@ jobs:
           # - complete: Both DAG and other file changes detected.
           # - none: No deployable code changes detected.
           if [ "$dags_changed" == "true" ] && [ "$other_changed" == "false" ]; then
-            echo "Case 1: Only DAG changes detected."
+            echo "Only DAG changes detected."
             echo "deploy_type=dags_only" >> $GITHUB_OUTPUT
           elif [ "$dags_changed" == "false" ] && [ "$other_changed" == "true" ]; then
-            echo "Case 3: Only other file changes detected (image-only deploy)."
+            echo "Only other file changes detected (image-only deploy)."
             echo "deploy_type=image_only" >> $GITHUB_OUTPUT
           elif [ "$dags_changed" == "true" ] && [ "$other_changed" == "true" ]; then
-            echo "Case 4: Both DAG and other file changes detected (complete deploy)."
+            echo "Both DAG and other file changes detected (complete deploy, Image & DAGs)."
             echo "deploy_type=complete" >> $GITHUB_OUTPUT
           else
             echo "No deployable code changes detected (e.g., only README.md or blacklisted file changes)."
