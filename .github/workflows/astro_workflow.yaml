@@ -118,9 +118,9 @@ jobs:
         run: |
           branch=${GITHUB_REF##*/}
           if [ "$branch" == "main" ]; then
-            env_file=".env/.prod"
+            env_file=".env/prod.env"
           elif [ "$branch" == "dev" ]; then
-            env_file=".env/.dev"
+            env_file=".env/dev.env"
           else
             echo "Branch '$branch' not configured for environment updates. Skipping."
             exit 0
