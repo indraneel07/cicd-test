@@ -151,7 +151,7 @@ jobs:
             echo "Case 4: Both DAG and other file changes detected (complete deploy)."
             echo "deploy_type=complete" >> $GITHUB_OUTPUT
           else
-            echo "No deployable code changes detected (e.g., only .env or blacklisted file changes)."
+            echo "No deployable code changes detected (e.g., only README.md or blacklisted file changes)."
             echo "deploy_type=none" >> $GITHUB_OUTPUT
           fi
 

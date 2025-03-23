@@ -4,7 +4,7 @@ from airflow import DAG
 from airflow.decorators import task
 
 def expensive_api_call():
-    sleep(1000)
+    # sleep(1000)
     return "Hello from Airflow!"
 
 with DAG(
