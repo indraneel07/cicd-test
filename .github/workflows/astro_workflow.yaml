@@ -19,7 +19,7 @@ jobs:
     env:
       ASTRO_API_TOKEN: ${{ secrets.ASTRO_API_TOKEN }}
       DAG_FOLDER: dags/
-      CLI_VERSION: 1.33.2
+      CLI_VERSION: v1.33.2
       # BLACKLIST: files or folders that should not trigger a deploy.
       BLACKLIST: "README.md LICENSE docs"
 
