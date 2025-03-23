@@ -21,7 +21,7 @@ jobs:
       DAG_FOLDER: dags/
       CLI_VERSION: v1.33.2
       # BLACKLIST: files or folders that should not trigger a deploy.
-      BLACKLIST: "README.md LICENSE docs"
+      BLACKLIST: "README.md LICENSE docs .github"
 
     steps:
       # Step 1: Checkout the repository with full commit history.
