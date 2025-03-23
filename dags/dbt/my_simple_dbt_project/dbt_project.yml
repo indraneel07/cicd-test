@@ -1,0 +1,14 @@
+name: 'my_simple_dbt_project'
+models:
+    my_simple_dbt_project:
+        model1:
+            +tags: 
+                - "number1"
+        model2:
+            +tags: 
+                - "number2"
+        model3:
+            +tags: 
+                - "number3"
+vars:
+    my_name: "No entry"

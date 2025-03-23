@@ -1,0 +1,196 @@
+name: Deploy to Astro
+# This workflow triggers on push events to the main and dev branches.
+# It deploys changes to an Astro deployment based on file modifications:
+#   - Environment file changes: Update environment variables.
+#   - Only dags folder is updated: DAGs only deploy.
+#   - Only files outside the dags folder are updated: Image only deploy.
+#   - Both dags folder and other files outside the dags folder are updated: Complete deploy (Image & DAGs).
+# If no deployable code changes occur (e.g. only changes to .env or to blacklisted files like README.md), it skips deploy.
+# The CLI version is set via the CLI_VERSION env variable. If not provided, the latest version is installed.
+on:
+  push:
+    branches:
+      - main
+      - dev
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      ASTRO_API_TOKEN: ${{ secrets.ASTRO_API_TOKEN }}
+      DAG_FOLDER: dags/
+      CLI_VERSION: 1.33.2
+      # BLACKLIST: files or folders that should not trigger a deploy.
+      BLACKLIST: "README.md LICENSE docs"
+
+    steps:
+      # Step 1: Checkout the repository with full commit history.
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Step 2: Set the DEPLOYMENT_ID based on branch.
+      - name: Set Deployment ID
+        shell: bash
+        run: |
+          branch=${GITHUB_REF##*/}
+          if [ "$branch" == "main" ]; then
+            echo "Using production deployment ID for branch main"
+            echo "DEPLOYMENT_ID=${{ secrets.PROD_DEPLOYMENT_ID }}" >> $GITHUB_ENV
+          elif [ "$branch" == "dev" ]; then
+            echo "Using development deployment ID for branch dev"
+            echo "DEPLOYMENT_ID=${{ secrets.DEV_DEPLOYMENT_ID }}" >> $GITHUB_ENV
+          else
+            echo "Branch $branch not configured for deployment."
+            exit 1
+          fi
+
+      # Step 3: Install the Astro CLI.
+      - name: Install Astro CLI
+        run: |
+          if [[ "$CLI_VERSION" == "" ]]; then
+            curl -sSL https://install.astronomer.io | sudo bash -s
+          else
+            curl -sSL https://install.astronomer.io | sudo bash -s -- $CLI_VERSION
+          fi
+
+      # Step 4: Analyze Changes – Determine commit range, list changed files,
+      # and set flags based on changes in the DAG folder, .env folder, and other files.
+      - name: Analyze Changes
+        id: analyze_changes
+        shell: bash
+        run: |
+          # Determine the commit range for comparison.
+          if [ "${GITHUB_EVENT_BEFORE}" = "0000000000000000000000000000000000000000" ] || [ -z "${GITHUB_EVENT_BEFORE}" ]; then
+            commit_range="$(git rev-parse HEAD~1)..HEAD"
+          else
+            commit_range="${GITHUB_EVENT_BEFORE}..${GITHUB_EVENT_AFTER}"
+          fi
+          echo "Commit range: $commit_range"
+          
+          # List changed files.
+          files=$(git diff --name-only $commit_range -- .)
+          echo "Changed files: $files"
+          
+          # Initialize change flags.
+          dags_changed="false"
+          env_changed="false"
+          other_changed="false"
+
+          # Convert BLACKLIST to an array.
+          read -a blacklist_array <<< "$BLACKLIST"
+
+          for file in $files; do
+            if [[ "$file" == "${DAG_FOLDER}"* ]]; then
+              dags_changed="true"
+              echo "Detected change in DAG file: $file"
+            elif [[ "$file" == ".env/"* ]]; then
+              env_changed="true"
+              echo "Detected change in environment file: $file"
+            else
+              # Check if the file is in the blacklist.
+              is_blacklisted="false"
+              for ignored in "${blacklist_array[@]}"; do
+                if [[ "$file" == "$ignored" || "$file" == "$ignored/"* ]]; then
+                  is_blacklisted="true"
+                  echo "File '$file' is blacklisted ($ignored)."
+                  break
+                fi
+              done
+              if [ "$is_blacklisted" == "false" ]; then
+                other_changed="true"
+                echo "Detected change in other file: $file"
+              fi
+            fi
+          done
+          
+          # Export flags as outputs.
+          echo "dags_changed=$dags_changed" >> $GITHUB_OUTPUT
+          echo "env_changed=$env_changed" >> $GITHUB_OUTPUT
+          echo "other_changed=$other_changed" >> $GITHUB_OUTPUT
+          echo "commit_range=$commit_range" >> $GITHUB_OUTPUT
+
+      # Step 5: Update environment variables on Astro if .env files have changed.
+      - name: Update Astro Environment Variables if Needed
+        if: steps.analyze_changes.outputs.env_changed == 'true'
+        shell: bash
+        run: |
+          branch=${GITHUB_REF##*/}
+          if [ "$branch" == "main" ]; then
+            env_file=".env/.prod"
+          elif [ "$branch" == "dev" ]; then
+            env_file=".env/.dev"
+          else
+            echo "Branch '$branch' not configured for environment updates. Skipping."
+            exit 0
+          fi
+          echo "Updating Astro environment variables using file: $env_file"
+          astro deployment variable update --deployment-id $DEPLOYMENT_ID --load --env "$env_file"
+
+      # Step 6: Determine the deployment type based on file changes.
+      - name: Determine Deployment Type
+        id: deploy_decision
+        shell: bash
+        run: |
+          dags_changed="${{ steps.analyze_changes.outputs.dags_changed }}"
+          other_changed="${{ steps.analyze_changes.outputs.other_changed }}"
+          
+          # Evaluate deploy type:
+          # - dags_only: Only DAG files changed.
+          # - image_only: Only other (non-blacklisted) files changed.
+          # - complete: Both DAG and other file changes detected.
+          # - none: No deployable code changes detected.
+          if [ "$dags_changed" == "true" ] && [ "$other_changed" == "false" ]; then
+            echo "Case 1: Only DAG changes detected."
+            echo "deploy_type=dags_only" >> $GITHUB_OUTPUT
+          elif [ "$dags_changed" == "false" ] && [ "$other_changed" == "true" ]; then
+            echo "Case 3: Only other file changes detected (image-only deploy)."
+            echo "deploy_type=image_only" >> $GITHUB_OUTPUT
+          elif [ "$dags_changed" == "true" ] && [ "$other_changed" == "true" ]; then
+            echo "Case 4: Both DAG and other file changes detected (complete deploy)."
+            echo "deploy_type=complete" >> $GITHUB_OUTPUT
+          else
+            echo "No deployable code changes detected (e.g., only .env or blacklisted file changes)."
+            echo "deploy_type=none" >> $GITHUB_OUTPUT
+          fi
+
+      # Step 7: Wake Up Deployment if Hibernating.
+      - name: Wake Up Deployment if Hibernating
+        if: steps.deploy_decision.outputs.deploy_type != 'none'
+        shell: bash
+        run: |
+          echo "Checking if deployment $DEPLOYMENT_ID is hibernating..."
+          status=$(astro deployment inspect $DEPLOYMENT_ID --clean-output --key metadata.status)
+          echo "Deployment status: $status"
+          if [ "$status" == "HIBERNATING" ]; then
+            echo "Deployment is hibernating. Waking up..."
+            astro deployment wake-up $DEPLOYMENT_ID --force
+            # Wait until the deployment is no longer hibernating.
+            while [ "$(astro deployment inspect $DEPLOYMENT_ID --clean-output --key metadata.status)" == "HIBERNATING" ]; do
+              echo "Waiting for deployment to wake up..."
+              sleep 5
+            done
+            echo "Deployment is awake."
+          else
+            echo "Deployment is not hibernating. Proceeding..."
+          fi
+
+      # Step 8: Conditional Deployment Steps.
+      - name: Deploy DAGs Only
+        if: steps.deploy_decision.outputs.deploy_type == 'dags_only'
+        run: |
+          echo "Deploying DAGs only..."
+          astro deploy $DEPLOYMENT_ID --dags
+
+      - name: Deploy Image Only
+        if: steps.deploy_decision.outputs.deploy_type == 'image_only'
+        run: |
+          echo "Deploying image only..."
+          astro deploy $DEPLOYMENT_ID --image
+
+      - name: Complete Deploy (Image and DAGs)
+        if: steps.deploy_decision.outputs.deploy_type == 'complete'
+        run: |
+          echo "Performing complete deploy (image and DAGs)..."
+          astro deploy $DEPLOYMENT_ID
