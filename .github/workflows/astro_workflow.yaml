@@ -181,16 +181,16 @@ jobs:
         if: steps.deploy_decision.outputs.deploy_type == 'dags_only'
         run: |
           echo "Deploying DAGs only..."
-          astro deploy $DEPLOYMENT_ID --dags
+          astro deploy $DEPLOYMENT_ID --dags -f
 
       - name: Deploy Image Only
         if: steps.deploy_decision.outputs.deploy_type == 'image_only'
         run: |
           echo "Deploying image only..."
-          astro deploy $DEPLOYMENT_ID --image
+          astro deploy $DEPLOYMENT_ID --image -f
 
       - name: Complete Deploy (Image and DAGs)
         if: steps.deploy_decision.outputs.deploy_type == 'complete'
         run: |
           echo "Performing complete deploy (image and DAGs)..."
-          astro deploy $DEPLOYMENT_ID
+          astro deploy $DEPLOYMENT_ID -f
