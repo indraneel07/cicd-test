@@ -13,7 +13,7 @@ def my_task_1_func(**context):
     print(variable)
     msg = f"DAG ran successfully {variable}"
     subject = f"DAG {dag_run} has completed"
-    send_email(to=["indraneeldongaonkar@gmail.com"], subject=subject, html_content=msg)
+    send_email(to=["test@gmail.com"], subject=subject, html_content=msg)
 
 
 
