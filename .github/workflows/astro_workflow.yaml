@@ -126,7 +126,7 @@ jobs:
             exit 0
           fi
           echo "Updating Astro environment variables using file: $env_file"
-          astro deployment variable update --deployment-id $DEPLOYMENT_ID --load --env "$env_file"
+          astro deployment variable create --deployment-id $DEPLOYMENT_ID --load --env "$env_file"
 
       # Step 6: Determine the deployment type based on file changes.
       - name: Determine Deployment Type
