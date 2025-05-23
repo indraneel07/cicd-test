@@ -32,5 +32,5 @@ jobs:
         shell: bash
         run: |
           echo "hibernating..."
-          astro workspace switch clluiel1k003e01mvnrb8yw5e
+          astro workspace switch clluiel1k003e01mvnrb8yw54
           astro deployment hibernate --deployment-name target --for "14h"  --force
