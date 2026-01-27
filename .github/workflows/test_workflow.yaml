@@ -23,6 +23,7 @@ jobs:
 
       - name: Change Folder
         run: |
+          ls -la find . -maxdepth 2 -type d -name ".astro"
           cd dags
 
       - name: Complete Deploy (Image and DAGs)
