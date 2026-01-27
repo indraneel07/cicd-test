@@ -7,6 +7,7 @@ from airflow.utils.session import provide_session
 from airflow.models import TaskInstance
 from airflow.utils.state import State
 
+
 from sqlalchemy import func
 
 @task
