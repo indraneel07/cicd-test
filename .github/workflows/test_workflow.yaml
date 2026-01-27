@@ -30,3 +30,4 @@ jobs:
         with:
           deployment-id: cmkqz0wfc1cjg01m097d1tvdq
           deploy-type: image-and-dags
+          root-folder: .
