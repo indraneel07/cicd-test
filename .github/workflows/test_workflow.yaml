@@ -23,8 +23,13 @@ jobs:
 
       - name: Change Folder
         run: |
-          ls -la find . -maxdepth 2 -type d -name ".astro"
           cd dags
+
+      - name: Inspect repo structure
+        run: |
+          pwd
+          ls -la
+          find . -maxdepth 2 -type d -name ".astro"
 
       - name: Complete Deploy (Image and DAGs)
         uses: astronomer/deploy-action@v0.11.0
