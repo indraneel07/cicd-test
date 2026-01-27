@@ -4,6 +4,7 @@ import pendulum
 from airflow import DAG
 from airflow.decorators import task
 
+
 # Expensive imports should be avoided as top level imports, because DAG files are parsed frequently, resulting in top-level code being executed.
 #
 # import pandas
