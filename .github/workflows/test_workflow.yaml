@@ -35,4 +35,5 @@ jobs:
         with:
           deployment-id: cmggb42tp1ngt01q6q2paftn1
           image-name: ${{ steps.image_tag.outputs.image_tag }}
-          deploy-type: image
+          deploy-type: image-and-dags
+          root-folder: .
