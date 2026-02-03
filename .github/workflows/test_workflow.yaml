@@ -1,38 +1,37 @@
-name: Deploy to Astro
+name: Astronomer CI - Build & Deploy
+
 on:
   push:
     branches:
       - main
-      - dev
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
+
     env:
       ASTRO_API_TOKEN: ${{ secrets.ASTRO_API_TOKEN }}
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Create image tag
+        id: image_tag
+        run: echo "image_tag=astro-$(date +%Y%m%d%H%M%S)" >> $GITHUB_OUTPUT
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
         with:
-          fetch-depth: 0
+          context: .
+          load: true
+          tags: ${{ steps.image_tag.outputs.image_tag }}
+          build-args: |
+            ENV=prod
+            AIRFLOW_ENV=production
 
-      - name: Install Astro CLI
-        run: |
-          curl -sSL https://install.astronomer.io | sudo bash -s
-
-      - name: Change Folder
-        run: |
-          cd dags
-
-      - name: Inspect repo structure
-        run: |
-          pwd
-          ls -la
-          find . -maxdepth 2 -type d -name ".astro"
-
-      - name: Complete Deploy (Image and DAGs)
+      - name: Deploy to Astronomer
         uses: astronomer/deploy-action@v0.11.0
         with:
-          deployment-id: cmkqz0wfc1cjg01m097d1tvdq
-          deploy-type: image-and-dags
+          deployment-id: cmggb42tp1ngt01q6q2paftn1
+          image-name: ${{ steps.image_tag.outputs.image_tag }}
